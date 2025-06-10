@@ -4,18 +4,34 @@ import requests
 import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
+# --- Your existing code for constants and vector store loading ---
 # Constants
 VECTOR_STORE_PATH = "./vector_store"
-MODEL_API_ENDPOINT = os.getenv("MODEL_API_ENDPOINT")  
+# Make sure your .env file has: MODEL_API_ENDPOINT="https://api-inference.huggingface.co/models/google/gemma-2-9b-it"
+MODEL_API_ENDPOINT = os.getenv("MODEL_API_ENDPOINT")
+# Make sure your .env file has: API_KEY="hf_..."
 API_KEY = os.getenv("API_KEY")
 
+llm = HuggingFaceEndpoint(
+    repo_id="google/gemma-2-9b-it",
+    task="text-generation",
+    huggingfacehub_api_token=API_KEY
+)
+model = ChatHuggingFace(llm=llm)
+
+# Parser: plain string
+parser = StrOutputParser()
+
 # Load vector store
-embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
+embeddings = OpenAIEmbeddings()
 vector_store = FAISS.load_local(
     folder_path=VECTOR_STORE_PATH,
     embeddings=embeddings,
@@ -28,8 +44,8 @@ def stream(text, delay: float = 0.02):
         yield word + " "
         time.sleep(delay)
 
-# UI
-st.markdown("## Hello! 😊\nHow can I assist you with Center Desk procedures today?")
+# --- Your existing UI code ---
+st.markdown(f"## Hello! I am a Center Desk Assistant😊\nHow can I assist you with Center Desk procedures today?")
 st.divider()
 
 st.text("Some example prompts:\n")
@@ -48,9 +64,10 @@ if user_query:
     with st.chat_message("user"):
         st.write(user_query)
 
-    if len(user_query.split()) < 4:
+    # Simplified the initial check for clarity
+    if len(user_query.split()) < 3:
         with st.chat_message("assistant"):
-            st.write("Hello! How can I assist you with Center Desk procedures today?")
+            st.write("Hello! Please provide a more detailed question about Center Desk procedures.")
     else:
         with st.spinner("Thinking..."):
             # Retrieve relevant docs
@@ -58,39 +75,25 @@ if user_query:
             retrieved_context = "\n".join([doc.page_content for doc in docs])
 
             # Construct prompt for model
-            prompt = (
-                f"Context: {retrieved_context}\n\n"
-                f"Question: {user_query}\n\n"
-                f"Answer:"
+            # This structured prompt works well with instruction-tuned models
+            template = PromptTemplate(
+            input_variables=["context", "question"],
+            template="**Context:**\n{context}\n\n**Question:**\n{question}\n\n**Answer:**\nBased on the context provided, here is the procedure:"
             )
 
-            # Hugging Face API request
-            headers = {
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-
-            payload = {
-                "inputs": prompt,
-                "options": {"use_cache": False}
-            }
+            chain = template | model | parser
 
             try:
-                response = requests.post(MODEL_API_ENDPOINT, headers=headers, json=payload)
-                response.raise_for_status()
-
-                # Extract answer (some models return a list, some a dict)
-                result = response.json()
-                if isinstance(result, list):
-                    answer = result[0].get("generated_text", "No answer found.")
-                elif isinstance(result, dict) and "generated_text" in result:
-                    answer = result["generated_text"]
-                else:
-                    answer = str(result)  # fallback for unknown structure
-
+                result = chain.invoke({
+                    "context": retrieved_context,
+                    "question": user_query
+                })
+                answer = result.strip()
             except Exception as e:
-                answer = f"Error: Could not get response from model API.\nDetails: {e}"
+                st.error(f"An error occurred: {e}")
+                answer = "Oops, something went wrong while generating a response."
 
-        with st.chat_message("assistant"):
-            st.write_stream(stream(answer))
+
+
+            with st.chat_message("assistant"):
+                st.write_stream(stream(answer))
