@@ -1,6 +1,5 @@
 import streamlit as st
 import time
-import requests
 import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
@@ -12,12 +11,10 @@ from langchain_core.prompts import PromptTemplate
 # Load environment variables
 load_dotenv(override=True)
 
-# --- Your existing code for constants and vector store loading ---
+
 # Constants
 VECTOR_STORE_PATH = "./vector_store"
-# Make sure your .env file has: MODEL_API_ENDPOINT="https://api-inference.huggingface.co/models/google/gemma-2-9b-it"
-MODEL_API_ENDPOINT = os.getenv("MODEL_API_ENDPOINT")
-# Make sure your .env file has: API_KEY="hf_..."
+
 API_KEY = os.getenv("API_KEY")
 
 llm = HuggingFaceEndpoint(
@@ -44,7 +41,7 @@ def stream(text, delay: float = 0.02):
         yield word + " "
         time.sleep(delay)
 
-# --- Your existing UI code ---
+
 st.markdown(f"## Hello! I am a Center Desk Assistant😊\nHow can I assist you with Center Desk procedures today?")
 st.divider()
 
@@ -64,7 +61,6 @@ if user_query:
     with st.chat_message("user"):
         st.write(user_query)
 
-    # Simplified the initial check for clarity
     if len(user_query.split()) < 3:
         with st.chat_message("assistant"):
             st.write("Hello! Please provide a more detailed question about Center Desk procedures.")
@@ -75,7 +71,6 @@ if user_query:
             retrieved_context = "\n".join([doc.page_content for doc in docs])
 
             # Construct prompt for model
-            # This structured prompt works well with instruction-tuned models
             template = PromptTemplate(
             input_variables=["context", "question"],
             template="**Context:**\n{context}\n\n**Question:**\n{question}\n\n**Answer:**\nBased on the context provided, here is the procedure:"
