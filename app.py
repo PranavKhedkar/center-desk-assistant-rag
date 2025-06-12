@@ -3,10 +3,12 @@ import time
 import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+# from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+from openai import OpenAI
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 # Load environment variables
 load_dotenv(override=True)
@@ -27,8 +29,11 @@ model = ChatHuggingFace(llm=llm)
 # Parser: plain string
 parser = StrOutputParser()
 
-# Load vector store
-embeddings = OpenAIEmbeddings()
+client = OpenAI()
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-ada-002"
+)
+
 vector_store = FAISS.load_local(
     folder_path=VECTOR_STORE_PATH,
     embeddings=embeddings,
