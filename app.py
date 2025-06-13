@@ -3,20 +3,21 @@ import time
 import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+# from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+from openai import OpenAI
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 # Load environment variables
 load_dotenv(override=True)
 
-
 # Constants
 VECTOR_STORE_PATH = "./vector_store"
-
 API_KEY = os.getenv("API_KEY")
 
+# Initialize HuggingFace LLM
 llm = HuggingFaceEndpoint(
     repo_id="google/gemma-2-9b-it",
     task="text-generation",
@@ -24,24 +25,26 @@ llm = HuggingFaceEndpoint(
 )
 model = ChatHuggingFace(llm=llm)
 
-# Parser: plain string
-parser = StrOutputParser()
+# Initialize OpenAI embeddings
+client = OpenAI()
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-ada-002"
+)
 
 # Load vector store
-embeddings = OpenAIEmbeddings()
 vector_store = FAISS.load_local(
     folder_path=VECTOR_STORE_PATH,
     embeddings=embeddings,
     allow_dangerous_deserialization=True
 )
 
-# Streaming output
+# Streaming output function
 def stream(text, delay: float = 0.02):
     for word in text.split():
         yield word + " "
         time.sleep(delay)
 
-
+# UI
 st.markdown(f"## Hello! I am a Center Desk Assistant😊\nHow can I assist you with Center Desk procedures today?")
 st.divider()
 
@@ -72,11 +75,11 @@ if user_query:
 
             # Construct prompt for model
             template = PromptTemplate(
-            input_variables=["context", "question"],
-            template="**Context:**\n{context}\n\n**Question:**\n{question}\n\n**Answer:**\nBased on the context provided, here is the procedure:"
+                input_variables=["context", "question"],
+                template="**Context:**\n{context}\n\n**Question:**\n{question}\n\n**Answer:**\nBased on the context provided, here is the procedure:"
             )
 
-            chain = template | model | parser
+            chain = template | model 
 
             try:
                 result = chain.invoke({
@@ -87,8 +90,6 @@ if user_query:
             except Exception as e:
                 st.error(f"An error occurred: {e}")
                 answer = "Oops, something went wrong while generating a response."
-
-
 
             with st.chat_message("assistant"):
                 st.write_stream(stream(answer))

@@ -36,3 +36,7 @@ ENV/
 center_desk_full_fine_tuning_dataset.csv
 
 test.py
+
+cda-rag/
+clean_rag/
+req.txt
