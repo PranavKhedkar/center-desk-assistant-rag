@@ -13,9 +13,9 @@ This application retrieves relevant information from a knowledge base and uses a
 - Example prompts to guide users
 
 ## Components
-- **Embeddings**: OpenAI text-embedding-ada-002
+- **Embeddings**: OpenAI text-embedding-3-small
 - **Vector Store**: FAISS
-- **LLM**: Google Gemma 2 9B Instruct
+- **LLM**: meta-llama/Llama-3.1-8B-Instruct
 - **Frontend**: Streamlit
 
 ## Files
