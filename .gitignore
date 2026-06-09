@@ -26,6 +26,8 @@ var/
 # Virtual Environment
 venv/
 ENV/
+clean_env/
+cda-rag/
 
 # IDE files
 .idea/
@@ -38,6 +40,5 @@ center_desk_full_fine_tuning_dataset.csv
 test.py
 app.py
 
-cda-rag/
 clean_rag/
 req.txt
