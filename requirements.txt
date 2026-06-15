@@ -1,8 +1,0 @@
-faiss-cpu
-huggingface-hub
-langchain-community
-langchain-openai
-openai
-pandas
-python-dotenv
-streamlit

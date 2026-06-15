@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+fastembed
+faiss-cpu
+pandas
+pydantic-settings
+sse-starlette
+huggingface-hub
+python-dotenv

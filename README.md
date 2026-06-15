@@ -1,64 +1,83 @@
 # Center Desk RAG Assistant
 
-A Retrieval-Augmented Generation (RAG) system for answering Center Desk procedure questions using Streamlit, OpenAI embeddings, and Google's Gemma model.
+A Retrieval-Augmented Generation (RAG) assistant that answers residence-hall
+**Center Desk** procedure questions. It is built as a decoupled, production-style
+app: a **FastAPI** Python service does the retrieval + generation, and a
+**Next.js / TypeScript** frontend streams the answer to the user.
 
-## Overview
+## Architecture
 
-This application retrieves relevant information from a knowledge base and uses a language model to generate accurate answers to questions about Center Desk procedures.
+```
+┌─────────────────────┐        POST /chat (SSE stream)      ┌──────────────────────┐
+│  Next.js + TS UI     │ ───────────────────────────────▶   │  FastAPI backend       │
+│  (frontend/)         │ ◀───────  token stream  ─────────   │  (backend/)            │
+└─────────────────────┘                                     │   ├─ fastembed (local) │
+                                                             │   ├─ FAISS (cosine)    │
+                                                             │   └─ HF Inference LLM  │
+                                                             └──────────────────────┘
+```
 
-## Features
-- Vector-based document retrieval with FAISS
-- Context-aware responses using RAG architecture
-- Streamlit web interface with streaming responses
-- Example prompts to guide users
+- **Embeddings:** `BAAI/bge-small-en-v1.5` via **fastembed** — runs locally (ONNX,
+  no PyTorch, no per-query API cost).
+- **Vector store:** FAISS with cosine similarity. The *question* is embedded as
+  the retrieval key; the full Q&A pair is stored as the document.
+- **Guardrail:** the LLM answers **only** from retrieved context; off-topic
+  questions (cosine score below the threshold) are refused rather than
+  hallucinated.
+- **LLM:** Hugging Face Inference API (free tier), streamed token-by-token.
+- **Knowledge base:** `backend/data/Center_Desk_Manual.csv` (220 Q&A entries).
 
-## Components
-- **Embeddings**: OpenAI text-embedding-3-small
-- **Vector Store**: FAISS
-- **LLM**: meta-llama/Llama-3.1-8B-Instruct
-- **Frontend**: Streamlit
+## Repository layout
 
-## Files
-- `app.py`: Main application
-- `create_vectorstore.py`: Creates vector database from CSV
-- `reqs.txt`: Minimal dependencies
-- `requirements.txt`: Full dependencies
-- `.env`: API keys (not in repo)
-- `vector_store/`: FAISS index files
+```
+backend/
+  app/
+    config.py      # typed settings (Pydantic)
+    ingest.py      # CSV -> FAISS index (local embeddings)
+    retriever.py   # load index + cosine search + threshold filter
+    rag.py         # retrieve -> grounded prompt -> stream
+    main.py        # FastAPI: GET /health, POST /chat (SSE)
+  data/Center_Desk_Manual.csv
+  scripts/add_dataset_entries.py
+  requirements.txt
+frontend/
+  app/page.tsx     # streaming chat UI (client component)
+```
 
 ## Setup
 
-1. **Clone and setup environment**
-   ```bash
-   git clone <repo-url>
-   cd center-desk-rag-model
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   # source venv/bin/activate  # Linux/Mac
-   pip install -r reqs.txt
-   ```
+### Backend
 
-2. **Configure API key**
-   Create `.env` file:
-   ```
-   API_KEY=your_huggingface_api_key
-   ```
+```bash
+cd backend
+python -m venv .venv && .venv\Scripts\activate     # Windows
+pip install -r requirements.txt
 
-3. **Create vector store**
-   ```bash
-   python create_vectorstore.py
-   ```
+# Configure secrets
+copy .env.example .env        # then add your HF_TOKEN
 
-4. **Run application**
-   ```bash
-   streamlit run app.py
-   ```
+# Build the vector index (downloads the embedding model once)
+python -m app.ingest
 
-## Usage
-Enter questions about Center Desk procedures in the chat interface. Example queries:
-- "How do I forward the desk phone?"
-- "How to log packages?"
-- "How to close center desk?"
+# Run the API
+uvicorn app.main:app --reload                       # http://localhost:8000/docs
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+# .env.local sets NEXT_PUBLIC_API_URL (defaults to http://localhost:8000)
+npm run dev                                          # http://localhost:3000
+```
+
+## API
+
+| Method | Path      | Description                                    |
+|--------|-----------|------------------------------------------------|
+| GET    | `/health` | Liveness + indexed-entry count                 |
+| POST   | `/chat`   | `{ "message": "..." }` → Server-Sent Event stream of answer tokens |
 
 ## License
 MIT
