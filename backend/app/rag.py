@@ -31,13 +31,17 @@ def _client() -> InferenceClient:
     return InferenceClient(api_key=settings.hf_token)
 
 
-def answer_stream(question: str) -> Iterator[str]:
-    """Yield answer tokens as they arrive. Also yields nothing if no context
-    passes the relevance threshold (the model then states it lacks the info)."""
+def _messages_for(question: str) -> list[dict]:
     docs: list[RetrievedDoc] = get_retriever().search_filtered(question)
     context = "\n\n".join(d.text for d in docs)
-    messages = _build_messages(context, question)
+    return _build_messages(context, question)
 
+
+def answer_stream(question: str) -> Iterator[str]:
+    """Yield answer tokens as they arrive (used by the streaming API). Yields
+    nothing extra if no context passes the threshold — the model then states it
+    lacks the info."""
+    messages = _messages_for(question)
     stream = _client().chat.completions.create(
         model=settings.hf_model,
         messages=messages,
@@ -50,6 +54,18 @@ def answer_stream(question: str) -> Iterator[str]:
         delta = chunk.choices[0].delta.content
         if delta:
             yield delta
+
+
+def answer_text(question: str) -> str:
+    """Return the full answer in one (non-streaming) call. Used by batch eval,
+    where streaming adds flakiness without benefit."""
+    messages = _messages_for(question)
+    resp = _client().chat.completions.create(
+        model=settings.hf_model,
+        messages=messages,
+        stream=False,
+    )
+    return (resp.choices[0].message.content or "").strip()
 
 
 def retrieve_only(question: str) -> list[RetrievedDoc]:

@@ -79,5 +79,44 @@ npm run dev                                          # http://localhost:3000
 | GET    | `/health` | Liveness + indexed-entry count                 |
 | POST   | `/chat`   | `{ "message": "..." }` → Server-Sent Event stream of answer tokens |
 
+## Evaluation
+
+The system is measured against a **held-out** set of paraphrased questions
+(`backend/eval/`) — phrased differently from the knowledge base so we test
+generalization, not memorization — plus out-of-scope questions that test the
+refusal guardrail.
+
+Two layers:
+- **Retrieval & guardrail** (deterministic, free): hit@1, hit@3, MRR, and how
+  reliably off-topic questions are refused.
+- **Generation quality** (`--judge`): an **independent, stronger LLM judge**
+  (OpenAI `gpt-4o-mini`) grades the free HF generator's answers for
+  *faithfulness* (grounded in retrieved context) and *correctness* (matches the
+  reference). Using a separate, stronger judge avoids the self-preference bias
+  of letting a model grade itself.
+
+```bash
+cd backend
+python -m eval.run_eval                         # retrieval + guardrail (free)
+python -m eval.run_eval --judge                 # + OpenAI-judged generation
+python -m eval.run_eval --judge --judge-provider hf   # judge with the free model instead
+```
+
+Latest results (30 in-scope, 6 out-of-scope):
+
+| Metric | Score |
+|---|---|
+| Retrieval hit@1 | 0.80 |
+| Retrieval hit@3 | 0.97 |
+| MRR | 0.88 |
+| False-refusal rate (in-scope) | 0.00 |
+| Refusal accuracy (out-of-scope) | 1.00 |
+| Faithfulness (gpt-4o-mini judge) | 0.87 |
+| Correctness (gpt-4o-mini judge) | 0.80 |
+
+The retrieval threshold (`score_threshold`) was tuned with this harness: every
+in-scope hit scores ≥ 0.75 while off-topic queries top out at ~0.65, so a 0.7
+cutoff yields zero false refusals and 100% off-topic refusal.
+
 ## License
 MIT

@@ -29,10 +29,10 @@ class Settings(BaseSettings):
     # --- Retrieval ---------------------------------------------------------
     top_k: int = 3
     # Cosine-similarity floor: retrieved docs scoring below this are dropped so
-    # the LLM is not fed loosely related context. Chosen empirically — on-topic
-    # queries score 0.75+ while off-topic ones top out near 0.50, so 0.6 leaves
-    # a clean margin. The eval harness should re-confirm this.
-    score_threshold: float = 0.6
+    # the LLM is not fed loosely related context. Tuned with eval/run_eval.py:
+    # every in-scope hit scores >= 0.753 while off-topic queries top out at
+    # ~0.645, so 0.7 gives 0 false refusals and 100% off-topic refusal.
+    score_threshold: float = 0.7
 
     # --- LLM (Hugging Face Inference, free tier) --------------------------
     # Accept either HF_TOKEN or the legacy API_KEY env var.
@@ -40,6 +40,12 @@ class Settings(BaseSettings):
         default=None, validation_alias=AliasChoices("HF_TOKEN", "API_KEY")
     )
     hf_model: str = "meta-llama/Llama-3.1-8B-Instruct"
+
+    # --- Evaluation judge (LLM-as-judge) ----------------------------------
+    # The judge is independent from the generator: a stronger model grades the
+    # free HF model's answers. Runs offline at eval time only, so cost is tiny.
+    openai_api_key: str | None = None
+    judge_model: str = "gpt-4o-mini"
 
     # --- API ---------------------------------------------------------------
     # CORS origins allowed to call this backend (the Next.js dev server, then

@@ -27,6 +27,7 @@ var/
 
 # Virtual Environment
 venv/
+.venv/
 ENV/
 clean_env/
 cda-rag/
@@ -40,3 +41,6 @@ clean_rag/
 
 # Generated RAG index (rebuild with: python -m app.ingest)
 backend/vector_store/
+
+# Eval reports (generated)
+backend/eval/results/
