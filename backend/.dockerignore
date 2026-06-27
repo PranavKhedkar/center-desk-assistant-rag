@@ -1,0 +1,20 @@
+# Keep the build context (and image) small and free of secrets / dev artifacts.
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+
+# Generated locally — rebuilt inside the image by `python -m app.ingest`.
+vector_store/
+.fastembed_cache/
+
+# Dev/eval-only — not part of the production API.
+eval/
+requirements-dev.txt
+scripts/
+
+# Misc
+.git/
+.gitignore
+*.md
