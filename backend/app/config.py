@@ -48,9 +48,17 @@ class Settings(BaseSettings):
     judge_model: str = "gpt-4o-mini"
 
     # --- API ---------------------------------------------------------------
-    # CORS origins allowed to call this backend (the Next.js dev server, then
-    # the deployed frontend URL).
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Comma-separated CORS origins allowed to call this backend (the Next.js dev
+    # server, then the deployed frontend URL). In production set CORS_ORIGINS to
+    # your Vercel URL, e.g. CORS_ORIGINS="https://my-app.vercel.app".
+    # Stored as a raw string (not list) so a plain env value needs no JSON.
+    cors_origins_raw: str = Field(
+        default="http://localhost:3000", validation_alias="CORS_ORIGINS"
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins_raw.split(",") if o.strip()]
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",

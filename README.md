@@ -79,6 +79,13 @@ npm run dev                                          # http://localhost:3000
 | GET    | `/health` | Liveness + indexed-entry count                 |
 | POST   | `/chat`   | `{ "message": "..." }` → Server-Sent Event stream of answer tokens |
 
+## Deployment
+
+Free-tier deploy: **backend → Hugging Face Spaces (Docker)**, **frontend →
+Vercel**. The backend image (`backend/Dockerfile`) bakes the embedding model and
+FAISS index in at build time so the container is self-contained. Step-by-step
+runbook: [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Evaluation
 
 The system is measured against a **held-out** set of paraphrased questions

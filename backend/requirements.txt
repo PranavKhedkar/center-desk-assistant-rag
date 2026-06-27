@@ -7,4 +7,3 @@ pydantic-settings
 sse-starlette
 huggingface-hub
 python-dotenv
-openai

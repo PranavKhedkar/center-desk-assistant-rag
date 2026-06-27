@@ -1,0 +1,6 @@
+# Dev/eval-only dependencies (not needed by the production API image).
+# Install with:  pip install -r requirements-dev.txt
+-r requirements.txt
+
+# LLM-as-judge for the evaluation harness (eval/run_eval.py --judge)
+openai
